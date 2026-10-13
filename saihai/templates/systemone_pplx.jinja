@@ -1,0 +1,55 @@
+{%- macro render_json(value) -%}
+{%- if value is mapping -%}
+{{- '{' -}}
+{%- for key, item in value.items() -%}
+{{- key | tojson(ensure_ascii=false) -}}{{- ': ' -}}{{- render_json(item) -}}
+{%- if not loop.last -%}{{- ', ' -}}{%- endif -%}
+{%- endfor -%}
+{{- '}' -}}
+{%- elif value is string -%}
+{{- value | tojson(ensure_ascii=false) -}}
+{%- elif value is sequence and value is not mapping -%}
+{{- '[' -}}
+{%- for item in value -%}
+{{- render_json(item) -}}{%- if not loop.last -%}{{- ', ' -}}{%- endif -%}
+{%- endfor -%}
+{{- ']' -}}
+{%- else -%}
+{{- value | tojson(ensure_ascii=false) -}}
+{%- endif -%}
+{%- endmacro -%}
+{%- if options | length > __CAPACITY__ -%}
+{{- raise_exception('saihai: this GGUF supports at most __CAPACITY__ candidates') -}}
+{%- endif -%}
+{{- __PREFIX_EXPR__ -}}
+{{- '{"instruction": ' -}}{{- render_json(instructions) -}}
+{{- ', "state": ' -}}{{- render_json(state) -}}
+{{- ', "type": ' -}}{{- render_json(type) -}}
+{{- ', "options": [' -}}
+{%- for option in options -%}
+{{- '{"code": ' -}}{{- render_json(option.label) -}}
+{{- ', "label": ' -}}
+{%- if type == 'score' -%}
+{{- render_json('option_' + loop.index0 | string) -}}
+{%- else -%}
+{{- render_json(option.key) -}}
+{%- endif -%}
+{{- ', "definition": ' -}}
+{%- if type == 'score' and option.description is mapping and 'value' in option.description -%}
+{%- if 'description' not in option.description or option.description.value is not number or option.description.value is boolean -%}
+{{- raise_exception('saihai: score levels require a numeric value and description') -}}
+{%- endif -%}
+{{- render_json(option.description.description) -}}
+{{- ', "numeric_value": ' -}}{{- render_json(option.description.value) -}}
+{%- elif type == 'score' -%}
+{{- render_json(option.description) -}}
+{{- ', "numeric_value": ' -}}{{- render_json(loop.index0) -}}
+{%- elif type == 'noul' and option.description is none -%}
+{{- render_json(option.key) -}}
+{%- else -%}
+{{- render_json(option.description) -}}
+{%- endif -%}
+{{- '}' -}}{%- if not loop.last -%}{{- ', ' -}}{%- endif -%}
+{%- endfor -%}
+{{- ']}' -}}
+{{- __SUFFIX_EXPR__ -}}

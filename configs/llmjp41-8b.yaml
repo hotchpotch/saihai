@@ -1,0 +1,46 @@
+model:
+  model_id: llm-jp/llm-jp-4.1-8b-thinking
+  revision: 7c19bc90e49b717381e4f474ee95964c05217a28
+  model_type: llama
+  trust_remote_code: true
+  prompt_protocol: llm-jp-harmony-final-v1
+dataset:
+  repo_id: hotchpotch/saihai-v1-dataset
+  revision: latest
+  split: train
+training:
+  mode: lora
+  compute_dtype: bfloat16
+  head_dtype: float32
+  gradient_checkpointing: true
+  log_every: 10
+  projections: all
+  rank: 16
+  alpha: 32
+  dropout: 0.0
+  learning_rate: 5.0e-05
+  head_learning_rate: 0.0001
+  optimizer: adamw
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  max_grad_norm: 1.0
+  batch_size: 2
+  gradient_accumulation: 8
+  epochs: 1
+  max_length: 8192
+  seed: 42
+  freeze_embeddings: true
+  validation_per_subset: 3
+  validation_runs: 10
+  smoke_steps: 10
+  smoke_examples: 24
+  cpu_threads: 8
+  allocator: expandable_segments:True
+prompt:
+  reasoning_effort: low
+  conversation_start_date: '2026-10-04'
+  serialization: minja-json-6-significant-digits
+evaluation:
+  category: japanese-v1
+  revision: 59b66dd94c430c1ec6db1c948fa2cc0410400a27
+  max_input_tokens: 65536

@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "saihai"
+version = "0.1.0"
+description = "Typed decisions with a llama.cpp-style System One interface"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+dependencies = ["huggingface-hub>=1.0,<2", "tokenizers>=0.23,<0.24"]
+
+[project.optional-dependencies]
+inference = ["torch==2.10.0", "transformers==5.17.0", "accelerate>=1.0,<2"]
+datasets = ["datasets==5.0.1"]
+training = ["torch==2.10.0", "transformers==5.17.0", "accelerate>=1.0,<2", "peft>=0.18,<1", "datasets==5.0.1", "pyyaml>=6,<7", "kernels==0.16.0", "einops>=0.8,<1"]
+
+[dependency-groups]
+dev = ["pytest>=9", "ruff>=0.16"]
+
+[tool.setuptools.packages.find]
+include = ["saihai*"]
+
+[tool.setuptools.package-data]
+saihai = ["templates/*.jinja"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.uv.sources]
+torch = [{ index = "torch-cu130", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "torch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true

@@ -1,0 +1,54 @@
+model:
+  model_id: Qwen/Qwen3.5-4B
+  revision: 851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a
+  model_type: qwen3_5
+dataset:
+  repo_id: hotchpotch/saihai-v1-dataset
+  revision: latest
+  split: train
+  train_filter:
+    exclude_s1mb_japanese_source_family: true
+    exclude_source_patterns:
+    - jglue|jnli|jsts|jcommonsenseqa
+    - jsick|(^|[^a-z])sick([^a-z]|$)
+    - janli|kuci|mintaka
+    - commonsense[-_]?moral[-_]?ja
+    - jculture|jamc[-_]?qa
+    - mmlu|mmmlu
+    - nanojmteb|jmteb|jacwir|ja_cwir|jagovfaqs|ja_gov_faqs|jaqket|miracl|mr[-_]?tydi|nlpjournaltitleabsretrieval
+    - jcola|jamp|temporalNLI_dataset|jsem|jgpqa|gpqa|sobaco
+training:
+  mode: lora
+  compute_dtype: bfloat16
+  head_dtype: float32
+  gradient_checkpointing: true
+  log_every: 10
+  projections: all
+  rank: 32
+  alpha: 64
+  dropout: 0.0
+  learning_rate: 0.0001
+  head_learning_rate: 0.0001
+  optimizer: adamw
+  weight_decay: 0.01
+  warmup_ratio: 0.05
+  max_grad_norm: 1.0
+  batch_size: 2
+  gradient_accumulation: 8
+  epochs: 1
+  max_length: 8192
+  seed: 42
+  freeze_embeddings: true
+  validation_per_subset: 3
+  validation_runs: 10
+  smoke_steps: 10
+  smoke_examples: 24
+  cpu_threads: 8
+  allocator: expandable_segments:True
+prompt:
+  reasoning_effort: low
+  conversation_start_date: '2026-10-04'
+  serialization: minja-json-6-significant-digits
+evaluation:
+  category: japanese-v1
+  revision: 59b66dd94c430c1ec6db1c948fa2cc0410400a27
