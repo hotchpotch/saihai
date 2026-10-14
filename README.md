@@ -22,7 +22,7 @@ code used to build the released models. The request format follows llama.cpp's
 | --- | --- |
 | [hotchpotch/saihai-v1-8b](https://huggingface.co/hotchpotch/saihai-v1-8b) | 8B model based on [llm-jp-4.1-8b-thinking](https://huggingface.co/llm-jp/llm-jp-4.1-8b-thinking) (Transformers) |
 | [hotchpotch/saihai-v1-8b-gguf](https://huggingface.co/hotchpotch/saihai-v1-8b-gguf) | GGUF for llama.cpp's `/v1/systemone` (BF16 to Q2_K) |
-| [hotchpotch/saihai-v1-310m](https://huggingface.co/hotchpotch/saihai-v1-310m) | Small encoder model trained with [Bekko System One](https://github.com/hotchpotch/bekko-system-one) (not built from this repository) |
+| [hotchpotch/saihai-v1-310m](https://huggingface.co/hotchpotch/saihai-v1-310m) | Small encoder model trained with [Bekko System One](https://github.com/hotchpotch/bekko-system-one) (not built from this repository; see its [training guide](https://github.com/hotchpotch/bekko-system-one/blob/main/docs/saihai-v1-310m.md)) |
 | [hotchpotch/saihai-v1-dataset](https://huggingface.co/datasets/hotchpotch/saihai-v1-dataset) | Training data for saihai-v1-8b |
 
 Benchmark results are on the
@@ -32,7 +32,10 @@ repository is needed for training, evaluation, conversion and the Python client
 below.
 
 See the [Japanese training and evaluation guide](docs/training-and-evaluation.md)
-for reproducible training, validation and S1MB Japanese evaluation.
+for reproducible training, validation and S1MB Japanese evaluation of the 8B
+model. To train **saihai-v1-310m**, see
+[Training Saihai v1 310M](https://github.com/hotchpotch/bekko-system-one/blob/main/docs/saihai-v1-310m.md)
+in the Bekko System One repository.
 
 ## Contents
 
