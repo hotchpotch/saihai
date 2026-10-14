@@ -457,6 +457,9 @@ def export_model(model, tokenizer, config, contract, output):
     tokenizer.save_pretrained(output)
     saved = dict(contract, vocab_size=original.lm_head.out_features)
     dump(output / "decision-inference.json", saved)
+    from .export_inference import export_inference
+
+    export_inference(output)
     return saved
 
 

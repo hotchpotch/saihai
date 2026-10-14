@@ -5,11 +5,17 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "saihai"
 version = "0.1.0"
-description = "Typed decisions with a llama.cpp-style System One interface"
+description = "saihai (采配): Japanese typed decision models with a llama.cpp-style System One interface"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 dependencies = ["huggingface-hub>=1.0,<2", "tokenizers>=0.23,<0.24"]
+
+[project.urls]
+Homepage = "https://github.com/hotchpotch/saihai"
+"Model (8B)" = "https://huggingface.co/hotchpotch/saihai-v1-8b"
+"Model (GGUF)" = "https://huggingface.co/hotchpotch/saihai-v1-8b-gguf"
+Dataset = "https://huggingface.co/datasets/hotchpotch/saihai-v1-dataset"
 
 [project.optional-dependencies]
 inference = ["torch==2.10.0", "transformers==5.17.0", "accelerate>=1.0,<2"]

@@ -1,20 +1,79 @@
 # saihai
 
-Portable data and inference for typed decision models.
+**saihai (采配)** is a Japanese **Typed Decision Model**. Given a state and named
+questions, it returns probabilities for three decision types in one forward
+pass, without generating text:
+
+- **Noul**: yes / no (probability of true)
+- **Choice**: one of 1–255 candidates (selected key and every candidate's probability)
+- **Score**: a 2–10 level rubric (expected level and per-level probabilities)
+
+This repository contains the training, evaluation, inference and GGUF conversion
+code used to build the released models. The request format follows llama.cpp's
+`/v1/systemone` endpoint.
+
+> 日本語: saihai (采配) は、はい/いいえ・選択・段階評価の判断を、文章を生成せずに確率として返す
+> 日本語の Decision モデルです。このリポジトリには、学習・評価・推論・GGUF 変換のコードがあります。
+> 学習と評価の手順は [日本語ドキュメント](docs/README.md) を参照してください。
+
+## Released models and data
+
+| Repository | Description |
+| --- | --- |
+| [hotchpotch/saihai-v1-8b](https://huggingface.co/hotchpotch/saihai-v1-8b) | 8B model based on [llm-jp-4.1-8b-thinking](https://huggingface.co/llm-jp/llm-jp-4.1-8b-thinking) (Transformers) |
+| [hotchpotch/saihai-v1-8b-gguf](https://huggingface.co/hotchpotch/saihai-v1-8b-gguf) | GGUF for llama.cpp's `/v1/systemone` (BF16 to Q2_K) |
+| [hotchpotch/saihai-v1-310m](https://huggingface.co/hotchpotch/saihai-v1-310m) | Small encoder model trained with [Bekko System One](https://github.com/hotchpotch/bekko-system-one) (not built from this repository) |
+| [hotchpotch/saihai-v1-dataset](https://huggingface.co/datasets/hotchpotch/saihai-v1-dataset) | Training data for saihai-v1-8b |
+
+Benchmark results are on the
+[S1MB leaderboard](https://huggingface.co/spaces/hotchpotch/S1MB-leaderboard?category=japanese-v1).
+The simplest way to use a released model is the model card's quick start; this
+repository is needed for training, evaluation, conversion and the Python client
+below.
 
 See the [Japanese training and evaluation guide](docs/training-and-evaluation.md)
 for reproducible training, validation and S1MB Japanese evaluation.
 
+## Contents
+
+- [Installation](#installation)
+- [Python System One interface](#python-system-one-interface)
+- [Standalone Transformers remote code](#standalone-transformers-remote-code)
+- [Dataset loading](#dataset-loading)
+- [llama.cpp decision inference](#llamacpp-decision-inference)
+- [Training](#training)
+- [Repository layout](#repository-layout)
+- [License](#license)
+
+## Installation
+
+Python 3.12+ is required. Choose the extras you need:
+
+| Extra | Use |
+| --- | --- |
+| *(none)* | llama.cpp client, HTTP frontend and GGUF tools |
+| `inference` | PyTorch / Transformers inference |
+| `datasets` | Dataset loading utilities |
+| `training` | LoRA training (CUDA) |
+
+```sh
+git clone https://github.com/hotchpotch/saihai.git
+cd saihai
+uv sync --python 3.12 --locked --extra inference
+# or: pip install '.[inference]'
+```
+
+For training, use `uv sync --python 3.12 --locked --extra training --extra inference --extra datasets`.
+
 ## Python System One interface
 
-Install from a checkout with `pip install '.[inference]'` for PyTorch inference,
-or `pip install .` for a separately managed llama-server. Released exports use
-the same `state` / `questions` request and `answers` response in both backends.
+Released exports use the same `state` / `questions` request and `answers`
+response with both the PyTorch and llama.cpp backends.
 
 ```python
 from saihai import Saihai
 
-model = Saihai.from_pretrained("owner/model", token=True, device="cuda")
+model = Saihai.from_pretrained("hotchpotch/saihai-v1-8b", device="cuda")
 result = model.systemone({
     "state": "The checkout is failing.",
     "questions": {
@@ -36,8 +95,8 @@ evaluated independently. The inference limit is stored in the model contract;
 overflow is rejected rather than truncated.
 
 For GGUF, start the matching model in llama-server, then use
-`Saihai.from_pretrained("owner/gguf-model", backend="llama.cpp",
-backend_url="http://127.0.0.1:8080", token=True)`.
+`Saihai.from_pretrained("hotchpotch/saihai-v1-8b-gguf", backend="llama.cpp",
+backend_url="http://127.0.0.1:8080")`.
 This loads the decision contract and tokenizer, not the GGUF weights again.
 With a backend whose native tokenizer matches the training token IDs, pass
 `native_tokenizer=True` to use GGUF tokenization without an external JSON.
@@ -46,6 +105,38 @@ In that mode the Hub client downloads only the decision contract.
 The optional request `model` field must match the loaded contract. The response
 reports the loaded model. Confidence and Score follow the mapping described
 below; numeric Score levels are preserved through explicit extensions.
+
+## Standalone Transformers remote code
+
+Exports include `inference_saihai.py`, which **must run on its own without the
+saihai package or any training code**. Install PyTorch, `transformers==5.17.0`,
+`tokenizers>=0.23,<0.24`, `huggingface-hub>=1.0,<2` and `accelerate>=1.0,<2`.
+Use Python 3.12+ and pin the same model revision for code and weights.
+
+```python
+from transformers import AutoModel
+
+model = AutoModel.from_pretrained(
+    "hotchpotch/saihai-v1-8b", revision="<commit hash>",
+    trust_remote_code=True, device_map="auto", dtype="auto",
+)
+result = model.systemone({
+    "state": "The checkout is failing.",
+    "questions": {"urgent": {"type": "noul", "instructions": "Is action urgent?"}},
+})
+print(result["answers"])
+```
+
+`model.predict(state, question)` returns one typed answer. `AutoModel` loads the
+decision wrapper; `AutoModelForCausalLM` continues to load the standard backbone.
+For a downloaded export, `from inference_saihai import SaihaiModel` and
+`SaihaiModel.from_pretrained("./model", device="cpu")` also work.
+
+New training exports attach the runtime automatically. To add it to an existing
+export without changing weights, run `python -m saihai.export_inference ./model`.
+The helper copies the maintained source verbatim and adds the `AutoModel` entry
+in `config.json`. Isolated-process tests load and infer with only export files,
+block imports of saihai, and compare probabilities with the package backend.
 
 ## Dataset loading
 
@@ -171,7 +262,7 @@ result = client.predict({
 ```
 
 Run the typed HTTP frontend separately from llama-server. Bind both processes to
-localhost or a machine's Tailscale IPv4 address. Select the GPU explicitly when
+localhost or a trusted private network address. Select the GPU explicitly when
 starting llama-server and keep its context slot large enough for the contract.
 
 ```sh
@@ -205,11 +296,11 @@ there is no uniform fallback. No reasoning or free text is generated. The API
 reports zero user-facing output tokens and separately reports its internal
 one-token-per-question readout in `backend_usage`. This frontend is not native
 llama.cpp `/v1/systemone` support: registering a new decision type in upstream
-is a separate integration step. Do not disguise the model as OpenJev or Nimble.
+is a separate integration step.
 
-## YAML training
+## Training
 
-Install the training dependencies with Python 3.12:
+Training is configured with YAML recipes. Install the training dependencies with Python 3.12:
 
 ```sh
 uv sync --python 3.12 --locked --extra training --extra inference --extra datasets
@@ -217,7 +308,7 @@ uv sync --python 3.12 --locked --extra training --extra inference --extra datase
 
 The four recipes in `configs/` cover Qwen3.5 0.8B / 4B / 9B and LLM-jp 4.1 8B.
 They pin the model revisions and use `dataset.revision: latest` with the `train` split of
-`hotchpotch/saihai-v1-dataset` (merged-no-3000), and keep the pre-v4 optimization
+`hotchpotch/saihai-v1-dataset`, and use the released optimization
 recipe: BF16 LoRA, FP32 candidate head initialized from original LM-head rows,
 masked soft-target cross entropy, separate backbone/head learning rates, AdamW,
 gradient clipping and a warmup/decay schedule. Batch size, accumulation, epochs,
@@ -382,3 +473,21 @@ according to available GPU memory. Quantization reduces model-weight memory,
 while KV-cache precision is a separate setting. The batch size above controls
 prompt processing, not the request context limit. Requests above the model or
 per-slot limit must be rejected rather than silently truncated.
+
+## Repository layout
+
+| Path | Contents |
+| --- | --- |
+| `saihai/` | Training, inference, llama.cpp client/server, GGUF conversion and S1MB evaluation |
+| `saihai/inference_saihai.py` | Standalone Transformers runtime copied into model exports |
+| `configs/` | Training recipes for LLM-jp 4.1 8B and Qwen3.5 0.8B / 4B / 9B, with source-family holdout variants |
+| `scripts/export_gguf.py` | Release GGUF export and quantization |
+| `docs/` | Training and evaluation guides (Japanese) |
+| `tests/` | Unit tests (`uv run pytest`) |
+
+## License
+
+The code in this repository is licensed under Apache-2.0; see [LICENSE](LICENSE).
+Released model weights follow their model cards. Training data keeps its
+source-specific licenses; see the
+[dataset card](https://huggingface.co/datasets/hotchpotch/saihai-v1-dataset).

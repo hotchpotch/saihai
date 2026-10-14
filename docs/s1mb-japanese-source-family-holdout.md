@@ -2,7 +2,7 @@
 
 今後の評価先は S1MB `japanese-v1`。`jdmb_source_family` と `jp-jdmb-*` は学習データの旧称に由来する識別名として保持します。
 
-LLM-jp 4.1 8B と Qwen3.5 4B について、S1MB `japanese-v1` と同じ出典ファミリーの学習例を除いた条件を比較する。モデル、LoRA、batch size、seed、入力形式、soft target、validation、評価方法は通常設定と同じにする。
+LLM-jp 4.1 8B と Qwen3.5 (0.8B / 4B / 9B) について、S1MB `japanese-v1` と同じ出典ファミリーの学習例を除いた条件を比較する。モデル、LoRA、batch size、seed、入力形式、soft target、validation、評価方法は通常設定と同じにする。
 
 ここでの「同じドメイン」は、記録された元データセット・出典ファミリーの一致を指す。知識・数学・推論などの広い分野を丸ごと除外する実験ではない。合成データの意味的な重複やベースモデルの事前学習への混入は、このフィルタでは判定できない。
 
@@ -73,7 +73,7 @@ uv run --no-sync python -m saihai.prepare_training \
 
 validation は除外前と同じ各 subset の最大3件を使い、S1MB Japanese 出典の validation も残す。学習途中に10回評価し、学習後は固定した S1MB japanese-v1 revision の全27セットを評価する。validation は開発用測定であり、S1MB Japanese の評価データを学習に使うことはない。
 
-## GPU が空いてからの実行
+## 実行手順
 
 まず validation を含む smoke を行う。`S1MB_ROOT` は再現手順で用意した S1MB checkout、`GPU_ID` は空いている GPU の番号とする。
 
@@ -84,6 +84,19 @@ CUDA_VISIBLE_DEVICES="$GPU_ID" uv run --no-sync python -m saihai.training \
   --smoke --eval-limit 2
 ```
 
-smoke 成功後、同じ固定設定で `--smoke --eval-limit 2` を外し、新しい出力先で全件学習する。Qwen4B は対応する prepared 設定を使う。2 GPU が空いていれば別モデルを並行実行できる。
+smoke 成功後、同じ固定設定で `--smoke --eval-limit 2` を外し、新しい出力先で全件学習する。Qwen3.5 は対応する prepared 設定を使う。2 GPU が空いていれば別モデルを並行実行できる。
 
 通常条件と同じ1 epoch・実効 batch size 16 のため、除外条件は約1,853 optimizer steps、通常条件は2,096 stepsとなる。warmup と validation の位置も総 steps に応じて変わる。これは学習データの除外による比較であり、更新回数を揃えた比較ではない。結果にはデータ量・steps・validation loss・S1MB Task Avgを併記する。
+
+## 結果
+
+S1MB `japanese-v1` (revision `59b66dd94c430c1ec6db1c948fa2cc0410400a27`) の Task Avg。差は「出典 train あり − なし」。
+
+| ベースモデル | 出典 train あり | 出典 train なし | 差 |
+|---|---:|---:|---:|
+| LLM-jp 4.1 8B ([saihai-v1-8b](https://huggingface.co/hotchpotch/saihai-v1-8b)) | 49.77 | 47.85 | +1.92 |
+| Qwen3.5 0.8B | 25.71 | 20.66 | +5.05 |
+| Qwen3.5 4B | 45.30 | 45.73 | -0.43 |
+| Qwen3.5 9B | 52.15 | 48.97 | +3.18 |
+
+出典 train を学習した10 benchmark では、どのモデルも8〜13点上がった一方、それ以外の17 benchmark の差は -2.46〜+0.58 点だった。各条件は1 seed で、除外条件は学習データと更新回数も少ない。

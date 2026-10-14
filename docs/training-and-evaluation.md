@@ -88,13 +88,12 @@ learning rate は最初の約5%で warmup し、その後は設定 LR の約20%�
 
 最新データでの再学習には `latest` を使います。同じ測定を追試する場合や複数モデルを比較する場合は、全 recipe を同じ full commit ID に固定します。`latest` のまま別時刻に起動すると、モデル間でデータ revision が変わる可能性があります。
 
-第8節の過去の JDMB 測定の固定値は次のとおりです。現在の S1MB 評価 pin は第3節と YAML に記録しています。
+第8節の測定で使った固定値は次のとおりです。S1MB の準備手順は第3節にあります。
 
 | 対象 | repository / revision |
 |---|---|
 | 学習データ | `hotchpotch/saihai-v1-dataset` / `906504ac4b72e133a613011318afd8206fb5e8ec` |
-| JDMB 評価データ | `hotchpotch/JDMB-v1` / `6afaa73f0d5b849f8da84d71b4b76dc960b2e8c7` |
-| JDMB evaluator の基準コード | `deff56af0f90b5fc52c86c3514b36b113503fa77`（過去の測定で使用）。 |
+| 評価データ | [`hotchpotch/S1MB-japanese-v1`](https://huggingface.co/datasets/hotchpotch/S1MB-japanese-v1) / `59b66dd94c430c1ec6db1c948fa2cc0410400a27` |
 
 モデルの revision は各 YAML に固定されています。saihai のコード revision と `uv.lock`、実行に使った recipe も保存してください。seed を固定しても、演算 backend や依存関係の差によって浮動小数の結果が変わるため、数値の完全一致までは保証しません。
 
@@ -106,7 +105,7 @@ from pathlib import Path
 import yaml
 
 train_revision = "906504ac4b72e133a613011318afd8206fb5e8ec"
-eval_revision = "6afaa73f0d5b849f8da84d71b4b76dc960b2e8c7"
+eval_revision = "59b66dd94c430c1ec6db1c948fa2cc0410400a27"
 output = Path("recipes/reproduction")
 output.mkdir(parents=True, exist_ok=True)
 for name in ("llmjp41-8b", "qwen35-0.8b", "qwen35-4b", "qwen35-9b"):
@@ -120,7 +119,7 @@ PY
 ## 3. S1MB Japanese の準備
 
 学習 CLI は終了後に外部 S1MB checkout の evaluator 環境で `japanese-v1` を評価します。
-日本語データには Hub のアクセス権が必要です。recipe の revision と同じ snapshot を準備します。
+評価データ [hotchpotch/S1MB-japanese-v1](https://huggingface.co/datasets/hotchpotch/S1MB-japanese-v1) は公開されています。recipe の revision と同じ snapshot を準備します。
 
 ```sh
 SAIHAI_ROOT="$(pwd)"
@@ -251,7 +250,7 @@ cd "$SAIHAI_ROOT"
 | Noul | `p(true)` と教師確率の binary Brier | `2 × balanced accuracy − 1`。Brier skillとは異なる。 |
 | Score | 元の数値を使った期待値の normalized MAE | benchmark全体の中央値定数予測のMAEに対する改善 |
 
-S1MB Task Avg は各タスク内で benchmark の補正スコアを平均し、Noul / Choice / Score を等重みで平均します。集約値には全27 benchmarkの測定が必要です。過去の JDMB AVG27 と計算方法が異なります。
+S1MB Task Avg は各タスク内で benchmark の補正スコアを平均し、Noul / Choice / Score を等重みで平均します。集約値には全27 benchmarkの測定が必要です。27 benchmark の単純平均 (AVG27) とは計算方法が異なります。
 
 raw metric、タスク別の値、予測分布も確認します。学習データには S1MB Japanese source-family の train データを含むため、この評価だけから未知タスクへの汎化や訓練データとの非重複を主張しません。
 
@@ -276,20 +275,18 @@ S1MB Japanese の raw result は evaluator の `data/results/<run-id>/` にも�
 
 追試では recipe、saihai / S1MB Japanese のコード、両方の lock、データ revision、選択 ID、export hash、入力長上限、評価の完全性をそろえて比較します。
 
-## 8. 過去の JDMB による4モデルの測定結果
+## 8. 4モデルの測定結果
 
-この節は切り替え前の履歴です。S1MB Japanese の測定結果として扱わず、現在の設定で追試する場合は S1MB で再評価してください。
+上記の固定データと配布 recipe による1 epochの結果です。各モデルは全33,532件を学習し、279件の固定 validation を10回測定しました。S1MB `japanese-v1` は全27 benchmark・8,067判断で、推論失敗は0件でした。
 
-上記の固定データと配布 recipe による1 epochの結果です。各モデルは全33,532件を学習し、279件の固定 validation を10回測定しました。JDMB は全27セット・8,067判断、推論失敗0件でした。
-
-| モデル | 最終 validation loss ↓ | JDMB AVG27 ↑ |
+| モデル | 最終 validation loss ↓ | S1MB japanese-v1 Task Avg ↑ |
 |---|---:|---:|
-| LLM-jp 4.1 8B | 0.4628 | 54.95 |
-| Qwen3.5 0.8B | 0.7875 | 30.21 |
-| Qwen3.5 4B | 0.4951 | 50.98 |
-| Qwen3.5 9B | 0.4480 | 57.25 |
+| LLM-jp 4.1 8B ([saihai-v1-8b](https://huggingface.co/hotchpotch/saihai-v1-8b)) | 0.4628 | 49.77 |
+| Qwen3.5 0.8B | 0.7875 | 25.71 |
+| Qwen3.5 4B | 0.4951 | 45.30 |
+| Qwen3.5 9B | 0.4480 | 52.15 |
 
-この表の validation loss は checkpoint の FP32 head で測り、JDMB は BF16 の merge済み export で測っています。validation は多言語の複数 subset、JDMB は日本語の decision tasks なので、同じ評価集の別指標ではありません。最新データや別設定で学習した結果をこの測定の再現と混同しないでください。
+validation loss は checkpoint の FP32 head、S1MB は BF16 の merge済み export で測っています。validation は多言語の複数 subset、S1MB は日本語の decision tasks なので、同じ評価集の別指標ではありません。学習データには S1MB japanese-v1 と同じ出典の train が含まれるため、未知のタスクでの性能を示すものではありません。出典 train を除いた対照実験は [S1MB Japanese 出典ファミリーを除外する対照実験](s1mb-japanese-source-family-holdout.md) を参照してください。最新データや別設定で学習した結果を、この測定の再現と混同しないでください。
 
 ## LLM-jp 8B の推論上限と学習上限
 
@@ -319,5 +316,5 @@ KV cacheのメモリも増えるので、GPU容量に合わせて並列数を減
 `-b 8192 -ub 512`のbatch設定は64Kの入力長制限とは別です。
 
 学習は8Kで行っています。64Kまで実行できることは長入力の判断品質の保証ではなく、
-64Kのデータでは十分な性能が出ない可能性があります。既存JDMBスコアも64K入力の
+64Kのデータでは十分な性能が出ない可能性があります。S1MB のスコアも64K入力の
 性能を測ったものではありません。
