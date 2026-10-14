@@ -24,6 +24,7 @@ code used to build the released models. The request format follows llama.cpp's
 | [hotchpotch/saihai-v1-8b-gguf](https://huggingface.co/hotchpotch/saihai-v1-8b-gguf) | GGUF for llama.cpp's `/v1/systemone` (BF16 to Q2_K) |
 | [hotchpotch/saihai-v1-310m](https://huggingface.co/hotchpotch/saihai-v1-310m) | Small encoder model trained with [Bekko System One](https://github.com/hotchpotch/bekko-system-one) (not built from this repository; see its [training guide](https://github.com/hotchpotch/bekko-system-one/blob/main/docs/saihai-v1-310m.md)) |
 | [hotchpotch/saihai-v1-dataset](https://huggingface.co/datasets/hotchpotch/saihai-v1-dataset) | Training data for saihai-v1-8b |
+| [hotchpotch/saihai-v1-310m-dataset](https://huggingface.co/datasets/hotchpotch/saihai-v1-310m-dataset) | Training data for saihai-v1-310m |
 
 Benchmark results are on the
 [S1MB leaderboard](https://huggingface.co/spaces/hotchpotch/S1MB-leaderboard?category=japanese-v1).
@@ -35,7 +36,8 @@ See the [Japanese training and evaluation guide](docs/training-and-evaluation.md
 for reproducible training, validation and S1MB Japanese evaluation of the 8B
 model. To train **saihai-v1-310m**, see
 [Training Saihai v1 310M](https://github.com/hotchpotch/bekko-system-one/blob/main/docs/saihai-v1-310m.md)
-in the Bekko System One repository.
+in the Bekko System One repository; its training data is
+[saihai-v1-310m-dataset](https://huggingface.co/datasets/hotchpotch/saihai-v1-310m-dataset).
 
 ## Contents
 
